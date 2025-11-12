@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/srv/sommelier_frontend
-ExecStart=/usr/bin/node .next/standalone/server.js
+ExecStart=/usr/bin/npm start
 Restart=always
 Environment=NODE_ENV=production
 StandardOutput=journal

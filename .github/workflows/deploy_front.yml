@@ -8,30 +8,36 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
+      - name: Build frontend
         run: |
-          npm ci --production
+          npm install
+          npm run build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.SOMMELIER_FRONT_API_URL }}
 
-      - name: Deploy to Frontend Server
+      - name: Deploy frontend service
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.FRONTEND_HOST }}
-          username: ${{ secrets.FRONTEND_USER }}
-          key: ${{ secrets.FRONTEND_SSH_KEY }}
+          host: ${{ secrets.SOMMELIER_FRONT_HOST }}
+          username: ${{ secrets.SOMMELIER_FRONT_USER }}
+          key: ${{ secrets.SOMMELIER_FRONT_SSH_KEY }}
+          port: 22
           script: |
+            # Actualizar código
             cd /srv/sommelier_frontend
             git pull origin main
-            npm ci --production
+
+            # Copiar unit file del frontend
+            sudo cp deploy/sommelier_frontend.service /etc/systemd/system/
+            sudo systemctl daemon-reload
             sudo systemctl restart sommelier_frontend.service
+
+            # Copiar configuración Nginx
+            sudo cp deploy/nginx/tusommeliervirtual.conf /etc/nginx/sites-available/
+            sudo ln -sf /etc/nginx/sites-available/tusommeliervirtual.conf /etc/nginx/sites-enabled/
+            sudo nginx -t
+            sudo systemctl reload nginx
