@@ -7,6 +7,7 @@ Type=simple
 WorkingDirectory=/srv/sommelier_frontend
 ExecStart=/usr/bin/npm run start
 Restart=always
+RestartSec=5
 KillMode=control-group
 Environment=NODE_ENV=production
 Environment=PATH=/usr/bin:/usr/local/bin:/srv/sommelier_frontend/node_modules/.bin
