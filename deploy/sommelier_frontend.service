@@ -7,8 +7,8 @@ Type=simple
 WorkingDirectory=/srv/sommelier_frontend
 ExecStart=/usr/bin/npm run start
 Restart=always
+KillMode=control-group
 Environment=NODE_ENV=production
-# Extendemos el PATH para que systemd encuentre los binarios de node_modules/.bin
 Environment=PATH=/usr/bin:/usr/local/bin:/srv/sommelier_frontend/node_modules/.bin
 StandardOutput=journal
 StandardError=journal
