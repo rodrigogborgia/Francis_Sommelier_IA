@@ -20,6 +20,7 @@ import { LoadingIcon } from "./Icons";
 import { MessageHistory } from "./AvatarSession/MessageHistory";
 
 import { AVATARS } from "@/app/lib/constants";
+import { apiPost } from "@/app/services/api"; // 👈 usamos el servicio centralizado
 
 // CONFIGURACIÓN PREDETERMINADA
 const DEFAULT_CONFIG: StartAvatarRequest = {
@@ -46,17 +47,10 @@ function InteractiveAvatar() {
   const [config] = useState<StartAvatarRequest>(DEFAULT_CONFIG);
   const mediaStream = useRef<HTMLVideoElement>(null);
 
-  // FUNCIÓN PARA OBTENER EL TOKEN DESDE TU BACKEND
+  // FUNCIÓN PARA OBTENER EL TOKEN DESDE TU BACKEND (usando apiPost)
   async function fetchAccessToken() {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/get-access-token`,
-        { method: "POST" }
-      );
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${await response.text()}`);
-      }
-      const token = await response.text();
+      const token = await apiPost("/get-access-token", {}); // 👈 ahora usa el servicio
       console.log("Access Token:", token);
       return token;
     } catch (error) {
@@ -167,7 +161,8 @@ function InteractiveAvatar() {
 
 export default function InteractiveAvatarWrapper() {
   return (
-    <StreamingAvatarProvider basePath={process.env.NEXT_PUBLIC_BASE_API_URL}>
+    <StreamingAvatarProvider basePath={process.env.API_BASE_URL}>
+      {/* 👆 usamos la misma variable de entorno que definimos */}
       <InteractiveAvatar />
     </StreamingAvatarProvider>
   );
