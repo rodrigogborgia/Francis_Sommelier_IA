@@ -26,7 +26,7 @@ import { apiPost } from "@/app/services/api"; // 👈 usamos el servicio central
 const DEFAULT_CONFIG: StartAvatarRequest = {
   quality: AvatarQuality.Low,
   avatarName: AVATARS[0].avatar_id,
-  knowledgeId: undefined, // el conocimiento lo da tu backend (RAG)
+  knowledgeId: undefined,
   voice: {
     rate: 1.5,
     emotion: VoiceEmotion.SERIOUS,
@@ -47,12 +47,12 @@ function InteractiveAvatar() {
   const [config] = useState<StartAvatarRequest>(DEFAULT_CONFIG);
   const mediaStream = useRef<HTMLVideoElement>(null);
 
-  // FUNCIÓN PARA OBTENER EL TOKEN DESDE TU BACKEND (usando apiPost)
+  // FUNCIÓN PARA OBTENER EL TOKEN DESDE TU BACKEND
   async function fetchAccessToken() {
     try {
       const token = await apiPost("/get-access-token", {}); // 👈 ahora usa el servicio
       console.log("Access Token:", token);
-      return token;
+      return token.access_token || token; // según cómo lo devuelva tu backend
     } catch (error) {
       console.error("Error fetching access token:", error);
       throw error;
@@ -161,8 +161,7 @@ function InteractiveAvatar() {
 
 export default function InteractiveAvatarWrapper() {
   return (
-    <StreamingAvatarProvider basePath={process.env.API_BASE_URL}>
-      {/* 👆 usamos la misma variable de entorno que definimos */}
+    <StreamingAvatarProvider basePath={process.env.NEXT_PUBLIC_API_BASE_URL}>
       <InteractiveAvatar />
     </StreamingAvatarProvider>
   );

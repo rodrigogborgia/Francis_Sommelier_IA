@@ -1,9 +1,10 @@
-const API_BASE_URL = process.env.API_BASE_URL;
+// Usamos la variable pública para que esté disponible en el cliente
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 async function handleResponse(res) {
   if (!res.ok) {
     // Intenta parsear error JSON, si existe
-    let details = '';
+    let details = "";
     try {
       const err = await res.json();
       details = ` | ${JSON.stringify(err)}`;
