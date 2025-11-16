@@ -6,11 +6,11 @@ After=network.target
 Type=simple
 User=sommelier
 WorkingDirectory=/srv/sommelier_frontend
-ExecStart=/srv/sommelier_frontend/node_modules/.bin/next start -p 3000
+ExecStart=/usr/local/bin/next start -p 3000
 Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
-Environment=PATH=/usr/bin:/usr/local/bin:/srv/sommelier_frontend/node_modules/.bin
+Environment=PATH=/usr/bin:/usr/local/bin
 StandardOutput=journal
 StandardError=journal
 
