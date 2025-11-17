@@ -1,14 +1,13 @@
 import { ToggleGroup, ToggleGroupItem } from "@radix-ui/react-toggle-group";
-import React from "react";
+import React, { useState } from "react";
 
 import { useVoiceChat } from "../logic/useVoiceChat";
 import { Button } from "../Button";
 import { useInterrupt } from "../logic/useInterrupt";
 
 import { AudioInput } from "./AudioInput";
-import { TextInput } from "./TextInput";
 
-export const AvatarControls: React.FC = () => {
+export const AvatarControls: React.FC<{ onSendMessage: (msg: string) => void }> = ({ onSendMessage }) => {
   const {
     isVoiceChatLoading,
     isVoiceChatActive,
@@ -16,6 +15,8 @@ export const AvatarControls: React.FC = () => {
     stopVoiceChat,
   } = useVoiceChat();
   const { interrupt } = useInterrupt();
+
+  const [text, setText] = useState("");
 
   return (
     <div className="flex flex-col gap-3 relative w-full items-center">
@@ -49,7 +50,30 @@ export const AvatarControls: React.FC = () => {
           Text Chat
         </ToggleGroupItem>
       </ToggleGroup>
-      {isVoiceChatActive || isVoiceChatLoading ? <AudioInput /> : <TextInput />}
+
+      {isVoiceChatActive || isVoiceChatLoading ? (
+        <AudioInput />
+      ) : (
+        <div className="flex gap-2 w-full">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Escribe tu pregunta..."
+            className="flex-1 border rounded px-2"
+          />
+          <Button
+            onClick={() => {
+              if (text.trim()) {
+                onSendMessage(text.trim());
+                setText("");
+              }
+            }}
+          >
+            Enviar
+          </Button>
+        </div>
+      )}
+
       <div className="absolute top-[-70px] right-3">
         <Button className="!bg-zinc-700 !text-white" onClick={interrupt}>
           Interrupt

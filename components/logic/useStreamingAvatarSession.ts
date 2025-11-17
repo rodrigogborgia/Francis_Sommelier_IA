@@ -1,10 +1,4 @@
-import StreamingAvatar, {
-  ConnectionQuality,
-  StartAvatarRequest,
-  StreamingEvents,
-} from "@heygen/streaming-avatar";
-import { useCallback } from "react";
-
+import { useCallback, useState } from "react";
 import {
   StreamingAvatarSessionState,
   useStreamingAvatarContext,
@@ -33,118 +27,88 @@ export const useStreamingAvatarSession = () => {
 
   useMessageHistory();
 
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  // Inicializa WebSocket con el token
   const init = useCallback(
     (token: string) => {
-      avatarRef.current = new StreamingAvatar({
-        token,
-        basePath: basePath,
-      });
+      const ws = new WebSocket(
+        `wss://api.heygen.com/v1/streaming.ws?token=${token}`
+      );
 
-      return avatarRef.current;
-    },
-    [basePath, avatarRef],
-  );
+      ws.onopen = () => {
+        console.log("WebSocket conectado");
+        setSessionState(StreamingAvatarSessionState.CONNECTING);
+      };
 
-  const handleStream = useCallback(
-    ({ detail }: { detail: MediaStream }) => {
-      setStream(detail);
-      setSessionState(StreamingAvatarSessionState.CONNECTED);
+      ws.onclose = () => {
+        console.log("WebSocket cerrado");
+        setSessionState(StreamingAvatarSessionState.INACTIVE);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("Mensaje WS:", data);
+
+          if (data.type === "session_created") {
+            setSessionId(data.session_id);
+            setSessionState(StreamingAvatarSessionState.CONNECTED);
+          }
+
+          // TODO: procesar chunks de audio/video y pasarlos a setStream
+        } catch (err) {
+          console.error("Error parseando mensaje WS:", err);
+        }
+      };
+
+      avatarRef.current = ws;
+      return ws;
     },
-    [setSessionState, setStream],
+    [avatarRef, setSessionState, setStream]
   );
 
   const stop = useCallback(async () => {
-    avatarRef.current?.off(StreamingEvents.STREAM_READY, handleStream);
-    avatarRef.current?.off(StreamingEvents.STREAM_DISCONNECTED, stop);
     clearMessages();
     stopVoiceChat();
     setIsListening(false);
     setIsUserTalking(false);
     setIsAvatarTalking(false);
     setStream(null);
-    await avatarRef.current?.stopAvatar();
+
+    if (avatarRef.current) {
+      (avatarRef.current as WebSocket).close();
+    }
+
     setSessionState(StreamingAvatarSessionState.INACTIVE);
+    setSessionId(null);
   }, [
-    handleStream,
-    setSessionState,
-    setStream,
     avatarRef,
-    setIsListening,
-    stopVoiceChat,
     clearMessages,
+    stopVoiceChat,
+    setIsListening,
     setIsUserTalking,
     setIsAvatarTalking,
+    setStream,
+    setSessionState,
   ]);
 
-  const start = useCallback(
-    async (config: StartAvatarRequest, token?: string) => {
-      if (sessionState !== StreamingAvatarSessionState.INACTIVE) {
-        throw new Error("There is already an active session");
+  // Enviar texto al avatar vía REST API
+  const sendText = useCallback(
+    async (token: string, text: string) => {
+      if (!sessionId) {
+        throw new Error("No hay sessionId activo");
       }
-
-      if (!avatarRef.current) {
-        if (!token) {
-          throw new Error("Token is required");
-        }
-        init(token);
-      }
-
-      if (!avatarRef.current) {
-        throw new Error("Avatar is not initialized");
-      }
-
-      setSessionState(StreamingAvatarSessionState.CONNECTING);
-      avatarRef.current.on(StreamingEvents.STREAM_READY, handleStream);
-      avatarRef.current.on(StreamingEvents.STREAM_DISCONNECTED, stop);
-      avatarRef.current.on(
-        StreamingEvents.CONNECTION_QUALITY_CHANGED,
-        ({ detail }: { detail: ConnectionQuality }) =>
-          setConnectionQuality(detail),
-      );
-      avatarRef.current.on(StreamingEvents.USER_START, () => {
-        setIsUserTalking(true);
+      await fetch("https://api.heygen.com/v1/streaming.input_text", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text, session_id: sessionId }),
       });
-      avatarRef.current.on(StreamingEvents.USER_STOP, () => {
-        setIsUserTalking(false);
-      });
-      avatarRef.current.on(StreamingEvents.AVATAR_START_TALKING, () => {
-        setIsAvatarTalking(true);
-      });
-      avatarRef.current.on(StreamingEvents.AVATAR_STOP_TALKING, () => {
-        setIsAvatarTalking(false);
-      });
-      avatarRef.current.on(
-        StreamingEvents.USER_TALKING_MESSAGE,
-        handleUserTalkingMessage,
-      );
-      avatarRef.current.on(
-        StreamingEvents.AVATAR_TALKING_MESSAGE,
-        handleStreamingTalkingMessage,
-      );
-      avatarRef.current.on(StreamingEvents.USER_END_MESSAGE, handleEndMessage);
-      avatarRef.current.on(
-        StreamingEvents.AVATAR_END_MESSAGE,
-        handleEndMessage,
-      );
-
-      await avatarRef.current.createStartAvatar(config);
-
-      return avatarRef.current;
     },
-    [
-      init,
-      handleStream,
-      stop,
-      setSessionState,
-      avatarRef,
-      sessionState,
-      setConnectionQuality,
-      setIsUserTalking,
-      handleUserTalkingMessage,
-      handleStreamingTalkingMessage,
-      handleEndMessage,
-      setIsAvatarTalking,
-    ],
+    [sessionId]
   );
 
   return {
@@ -152,7 +116,8 @@ export const useStreamingAvatarSession = () => {
     sessionState,
     stream,
     initAvatar: init,
-    startAvatar: start,
     stopAvatar: stop,
+    sendText,
+    sessionId,
   };
 };

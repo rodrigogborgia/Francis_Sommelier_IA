@@ -1,8 +1,3 @@
-import StreamingAvatar, {
-  ConnectionQuality,
-  StreamingTalkingMessageEvent,
-  UserTalkingMessageEvent,
-} from "@heygen/streaming-avatar";
 import React, { useRef, useState } from "react";
 
 export enum StreamingAvatarSessionState {
@@ -23,7 +18,7 @@ export interface Message {
 }
 
 type StreamingAvatarContextProps = {
-  avatarRef: React.MutableRefObject<StreamingAvatar | null>;
+  avatarRef: React.MutableRefObject<WebSocket | null>;
   basePath?: string;
 
   isMuted: boolean;
@@ -38,18 +33,13 @@ type StreamingAvatarContextProps = {
   stream: MediaStream | null;
   setStream: (stream: MediaStream | null) => void;
 
+  sessionId: string | null;
+  setSessionId: (id: string | null) => void;
+
   messages: Message[];
   clearMessages: () => void;
-  handleUserTalkingMessage: ({
-    detail,
-  }: {
-    detail: UserTalkingMessageEvent;
-  }) => void;
-  handleStreamingTalkingMessage: ({
-    detail,
-  }: {
-    detail: StreamingTalkingMessageEvent;
-  }) => void;
+  handleUserTalkingMessage: (msg: string) => void;
+  handleStreamingTalkingMessage: (msg: string) => void;
   handleEndMessage: () => void;
 
   isListening: boolean;
@@ -59,50 +49,51 @@ type StreamingAvatarContextProps = {
   isAvatarTalking: boolean;
   setIsAvatarTalking: (isAvatarTalking: boolean) => void;
 
-  connectionQuality: ConnectionQuality;
-  setConnectionQuality: (connectionQuality: ConnectionQuality) => void;
+  connectionQuality: string;
+  setConnectionQuality: (connectionQuality: string) => void;
 };
 
-const StreamingAvatarContext = React.createContext<StreamingAvatarContextProps>(
-  {
-    avatarRef: { current: null },
-    isMuted: true,
-    setIsMuted: () => {},
-    isVoiceChatLoading: false,
-    setIsVoiceChatLoading: () => {},
-    sessionState: StreamingAvatarSessionState.INACTIVE,
-    setSessionState: () => {},
-    isVoiceChatActive: false,
-    setIsVoiceChatActive: () => {},
-    stream: null,
-    setStream: () => {},
-    messages: [],
-    clearMessages: () => {},
-    handleUserTalkingMessage: () => {},
-    handleStreamingTalkingMessage: () => {},
-    handleEndMessage: () => {},
-    isListening: false,
-    setIsListening: () => {},
-    isUserTalking: false,
-    setIsUserTalking: () => {},
-    isAvatarTalking: false,
-    setIsAvatarTalking: () => {},
-    connectionQuality: ConnectionQuality.UNKNOWN,
-    setConnectionQuality: () => {},
-  },
-);
+const StreamingAvatarContext = React.createContext<StreamingAvatarContextProps>({
+  avatarRef: { current: null },
+  isMuted: true,
+  setIsMuted: () => {},
+  isVoiceChatLoading: false,
+  setIsVoiceChatLoading: () => {},
+  sessionState: StreamingAvatarSessionState.INACTIVE,
+  setSessionState: () => {},
+  isVoiceChatActive: false,
+  setIsVoiceChatActive: () => {},
+  stream: null,
+  setStream: () => {},
+  sessionId: null,
+  setSessionId: () => {},
+  messages: [],
+  clearMessages: () => {},
+  handleUserTalkingMessage: () => {},
+  handleStreamingTalkingMessage: () => {},
+  handleEndMessage: () => {},
+  isListening: false,
+  setIsListening: () => {},
+  isUserTalking: false,
+  setIsUserTalking: () => {},
+  isAvatarTalking: false,
+  setIsAvatarTalking: () => {},
+  connectionQuality: "UNKNOWN",
+  setConnectionQuality: () => {},
+});
 
 const useStreamingAvatarSessionState = () => {
-  const [sessionState, setSessionState] = useState(
-    StreamingAvatarSessionState.INACTIVE,
-  );
+  const [sessionState, setSessionState] = useState(StreamingAvatarSessionState.INACTIVE);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   return {
     sessionState,
     setSessionState,
     stream,
     setStream,
+    sessionId,
+    setSessionId,
   };
 };
 
@@ -125,56 +116,20 @@ const useStreamingAvatarMessageState = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const currentSenderRef = useRef<MessageSender | null>(null);
 
-  const handleUserTalkingMessage = ({
-    detail,
-  }: {
-    detail: UserTalkingMessageEvent;
-  }) => {
-    if (currentSenderRef.current === MessageSender.CLIENT) {
-      setMessages((prev) => [
-        ...prev.slice(0, -1),
-        {
-          ...prev[prev.length - 1],
-          content: [prev[prev.length - 1].content, detail.message].join(""),
-        },
-      ]);
-    } else {
-      currentSenderRef.current = MessageSender.CLIENT;
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          sender: MessageSender.CLIENT,
-          content: detail.message,
-        },
-      ]);
-    }
+  const handleUserTalkingMessage = (msg: string) => {
+    currentSenderRef.current = MessageSender.CLIENT;
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now().toString(), sender: MessageSender.CLIENT, content: msg },
+    ]);
   };
 
-  const handleStreamingTalkingMessage = ({
-    detail,
-  }: {
-    detail: StreamingTalkingMessageEvent;
-  }) => {
-    if (currentSenderRef.current === MessageSender.AVATAR) {
-      setMessages((prev) => [
-        ...prev.slice(0, -1),
-        {
-          ...prev[prev.length - 1],
-          content: [prev[prev.length - 1].content, detail.message].join(""),
-        },
-      ]);
-    } else {
-      currentSenderRef.current = MessageSender.AVATAR;
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          sender: MessageSender.AVATAR,
-          content: detail.message,
-        },
-      ]);
-    }
+  const handleStreamingTalkingMessage = (msg: string) => {
+    currentSenderRef.current = MessageSender.AVATAR;
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now().toString(), sender: MessageSender.AVATAR, content: msg },
+    ]);
   };
 
   const handleEndMessage = () => {
@@ -195,27 +150,17 @@ const useStreamingAvatarMessageState = () => {
 
 const useStreamingAvatarListeningState = () => {
   const [isListening, setIsListening] = useState(false);
-
   return { isListening, setIsListening };
 };
 
 const useStreamingAvatarTalkingState = () => {
   const [isUserTalking, setIsUserTalking] = useState(false);
   const [isAvatarTalking, setIsAvatarTalking] = useState(false);
-
-  return {
-    isUserTalking,
-    setIsUserTalking,
-    isAvatarTalking,
-    setIsAvatarTalking,
-  };
+  return { isUserTalking, setIsUserTalking, isAvatarTalking, setIsAvatarTalking };
 };
 
 const useStreamingAvatarConnectionQualityState = () => {
-  const [connectionQuality, setConnectionQuality] = useState(
-    ConnectionQuality.UNKNOWN,
-  );
-
+  const [connectionQuality, setConnectionQuality] = useState("UNKNOWN");
   return { connectionQuality, setConnectionQuality };
 };
 
@@ -226,7 +171,7 @@ export const StreamingAvatarProvider = ({
   children: React.ReactNode;
   basePath?: string;
 }) => {
-  const avatarRef = React.useRef<StreamingAvatar>(null);
+  const avatarRef = React.useRef<WebSocket>(null);
   const voiceChatState = useStreamingAvatarVoiceChatState();
   const sessionState = useStreamingAvatarSessionState();
   const messageState = useStreamingAvatarMessageState();

@@ -1,13 +1,4 @@
-import {
-  AvatarQuality,
-  StreamingEvents,
-  VoiceChatTransport,
-  VoiceEmotion,
-  StartAvatarRequest,
-  STTProvider,
-  ElevenLabsModel,
-} from "@heygen/streaming-avatar";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useMemoizedFn, useUnmount } from "ahooks";
 
 import { Button } from "./Button";
@@ -19,33 +10,15 @@ import { StreamingAvatarProvider, StreamingAvatarSessionState } from "./logic";
 import { LoadingIcon } from "./Icons";
 import { MessageHistory } from "./AvatarSession/MessageHistory";
 
-import { AVATARS } from "@/app/lib/constants";
 import { apiPost } from "@/app/services/api"; // 👈 usamos el servicio centralizado
 
-// CONFIGURACIÓN PREDETERMINADA
-const DEFAULT_CONFIG: StartAvatarRequest = {
-  quality: AvatarQuality.Low,
-  avatarName: AVATARS[0].avatar_id,
-  knowledgeId: undefined,
-  voice: {
-    rate: 1.5,
-    emotion: VoiceEmotion.SERIOUS,
-    model: ElevenLabsModel.eleven_flash_v2_5,
-  },
-  language: "es-AR",
-  voiceChatTransport: VoiceChatTransport.WEBSOCKET,
-  sttSettings: {
-    provider: STTProvider.DEEPGRAM,
-  },
-};
-
 function InteractiveAvatar() {
-  const { initAvatar, startAvatar, stopAvatar, sessionState, stream } =
+  const { initAvatar, stopAvatar, sendText, sessionState, stream, sessionId } =
     useStreamingAvatarSession();
   const { startVoiceChat } = useVoiceChat();
 
-  const [config] = useState<StartAvatarRequest>(DEFAULT_CONFIG);
   const mediaStream = useRef<HTMLVideoElement>(null);
+  const tokenRef = useRef<string | null>(null);
 
   // FUNCIÓN PARA OBTENER EL TOKEN DESDE TU BACKEND
   async function fetchAccessToken() {
@@ -59,7 +32,7 @@ function InteractiveAvatar() {
     }
   }
 
-  // FUNCIÓN PARA CONSULTAR PDFs Y OBTENER knowledgeId (se usará dinámicamente con la pregunta del usuario)
+  // FUNCIÓN PARA CONSULTAR PDFs Y OBTENER knowledgeId
   async function fetchKnowledgeId(question: string) {
     try {
       const res = await apiPost("/query", { question });
@@ -74,60 +47,50 @@ function InteractiveAvatar() {
     }
   }
 
+  // Iniciar sesión con saludo inicial
   const startSessionV2 = useMemoizedFn(async (isVoiceChat: boolean) => {
     try {
       const newToken = await fetchAccessToken();
-      const avatar = initAvatar(newToken);
+      tokenRef.current = newToken;
 
-      // --- LISTENERS DE EVENTOS ---
-      avatar.on(StreamingEvents.AVATAR_START_TALKING, (e) =>
-        console.log("Avatar started talking", e)
-      );
-      avatar.on(StreamingEvents.AVATAR_STOP_TALKING, (e) =>
-        console.log("Avatar stopped talking", e)
-      );
-      avatar.on(StreamingEvents.STREAM_DISCONNECTED, () =>
-        console.log("Stream disconnected")
-      );
-      avatar.on(StreamingEvents.STREAM_READY, (event) =>
-        console.log(">>>>> Stream ready:", event.detail)
-      );
-      avatar.on(StreamingEvents.USER_START, (event) =>
-        console.log(">>>>> User started talking:", event)
-      );
-      avatar.on(StreamingEvents.USER_STOP, (event) =>
-        console.log(">>>>> User stopped talking:", event)
-      );
-      avatar.on(StreamingEvents.USER_END_MESSAGE, (event) =>
-        console.log(">>>>> User end message:", event)
-      );
-      avatar.on(StreamingEvents.USER_TALKING_MESSAGE, (event) =>
-        console.log(">>>>> User talking message:", event)
-      );
-      avatar.on(StreamingEvents.AVATAR_TALKING_MESSAGE, (event) =>
-        console.log(">>>>> Avatar talking message:", event)
-      );
-      avatar.on(StreamingEvents.AVATAR_END_MESSAGE, (event) =>
-        console.log(">>>>> Avatar end message:", event)
-      );
-      // --- FIN LISTENERS ---
+      initAvatar(newToken);
 
-      // 🔎 Arrancamos con saludo inicial en el config
-      const finalConfig: StartAvatarRequest = {
-        ...config,
-        knowledgeId: undefined,
-        inputText:
-          "¡Qué lindo es estar hoy con todos ustedes! ¿Qué les gustaría saber de Espacio Sommelier?",
-      };
+      // 👋 Enviar saludo inicial al avatar cuando tengamos sessionId
+      const checkSession = setInterval(async () => {
+        if (sessionId && tokenRef.current) {
+          clearInterval(checkSession);
+          await sendText(
+            tokenRef.current,
+            "¡Qué lindo es estar hoy con todos ustedes! ¿Qué les gustaría saber de Espacio Sommelier?"
+          );
 
-      await startAvatar(finalConfig, newToken);
-
-      if (isVoiceChat) {
-        await startVoiceChat();
-      }
+          if (isVoiceChat) {
+            await startVoiceChat(tokenRef.current, sessionId);
+          }
+        }
+      }, 500);
     } catch (error) {
       console.error("Error starting avatar session:", error);
     }
+  });
+
+  // Manejar preguntas del usuario
+  const handleUserMessage = useMemoizedFn(async (userMessage: string) => {
+    if (!tokenRef.current || !sessionId) {
+      console.error("No hay sesión activa");
+      return;
+    }
+
+    // 1. Obtener knowledgeId desde backend
+    const knowledgeId = await fetchKnowledgeId(userMessage);
+
+    // 2. Construir mensaje con knowledgeId
+    const message = knowledgeId
+      ? `${userMessage} [knowledgeId:${knowledgeId}]`
+      : userMessage;
+
+    // 3. Enviar al avatar
+    await sendText(tokenRef.current, message);
   });
 
   useUnmount(() => {
@@ -160,7 +123,7 @@ function InteractiveAvatar() {
 
         <div className="flex flex-col gap-3 items-center justify-center p-4 border-t border-zinc-700 w-full">
           {sessionState === StreamingAvatarSessionState.CONNECTED ? (
-            <AvatarControls />
+            <AvatarControls onSendMessage={handleUserMessage} />
           ) : sessionState === StreamingAvatarSessionState.INACTIVE ? (
             <div className="flex flex-row gap-4">
               <Button onClick={() => startSessionV2(true)}>

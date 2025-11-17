@@ -1,58 +1,38 @@
 import { useCallback } from "react";
 
-import { useStreamingAvatarContext } from "./context";
-
 export const useVoiceChat = () => {
-  const {
-    avatarRef,
-    isMuted,
-    setIsMuted,
-    isVoiceChatActive,
-    setIsVoiceChatActive,
-    isVoiceChatLoading,
-    setIsVoiceChatLoading,
-  } = useStreamingAvatarContext();
-
+  // Iniciar chat de voz
   const startVoiceChat = useCallback(
-    async (isInputAudioMuted?: boolean) => {
-      if (!avatarRef.current) return;
-      setIsVoiceChatLoading(true);
-      await avatarRef.current?.startVoiceChat({
-        isInputAudioMuted,
+    async (token: string, sessionId: string) => {
+      await fetch("https://api.heygen.com/v1/streaming.push_to_talk_start", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ session_id: sessionId }),
       });
-      setIsVoiceChatLoading(false);
-      setIsVoiceChatActive(true);
-      setIsMuted(!!isInputAudioMuted);
     },
-    [avatarRef, setIsMuted, setIsVoiceChatActive, setIsVoiceChatLoading],
+    []
   );
 
-  const stopVoiceChat = useCallback(() => {
-    if (!avatarRef.current) return;
-    avatarRef.current?.closeVoiceChat();
-    setIsVoiceChatActive(false);
-    setIsMuted(true);
-  }, [avatarRef, setIsMuted, setIsVoiceChatActive]);
-
-  const muteInputAudio = useCallback(() => {
-    if (!avatarRef.current) return;
-    avatarRef.current?.muteInputAudio();
-    setIsMuted(true);
-  }, [avatarRef, setIsMuted]);
-
-  const unmuteInputAudio = useCallback(() => {
-    if (!avatarRef.current) return;
-    avatarRef.current?.unmuteInputAudio();
-    setIsMuted(false);
-  }, [avatarRef, setIsMuted]);
+  // Detener chat de voz
+  const stopVoiceChat = useCallback(
+    async (token: string, sessionId: string) => {
+      await fetch("https://api.heygen.com/v1/streaming.push_to_talk_stop", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ session_id: sessionId }),
+      });
+    },
+    []
+  );
 
   return {
     startVoiceChat,
     stopVoiceChat,
-    muteInputAudio,
-    unmuteInputAudio,
-    isMuted,
-    isVoiceChatActive,
-    isVoiceChatLoading,
   };
 };
