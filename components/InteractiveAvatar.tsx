@@ -112,18 +112,15 @@ function InteractiveAvatar() {
       );
       // --- FIN LISTENERS ---
 
-      // 🔎 Arrancamos sin knowledgeId fijo
+      // 🔎 Arrancamos con saludo inicial en el config
       const finalConfig: StartAvatarRequest = {
         ...config,
         knowledgeId: undefined,
+        inputText:
+          "¡Qué lindo es estar hoy con todos ustedes! ¿Qué les gustaría saber de Espacio Sommelier?",
       };
 
       await startAvatar(finalConfig, newToken);
-
-      // 👋 Mensaje inicial de bienvenida
-      avatar.inputText(
-        "¡Qué lindo es estar hoy con todos ustedes! ¿Qué les gustaría saber de Espacio Sommelier?"
-      );
 
       if (isVoiceChat) {
         await startVoiceChat();
