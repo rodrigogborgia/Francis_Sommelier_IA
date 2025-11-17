@@ -50,12 +50,27 @@ function InteractiveAvatar() {
   // FUNCIÓN PARA OBTENER EL TOKEN DESDE TU BACKEND
   async function fetchAccessToken() {
     try {
-      const token = await apiPost("/get-access-token", {}); // 👈 ahora usa el servicio
+      const token = await apiPost("/get-access-token", {});
       console.log("Access Token:", token);
-      return token.access_token || token; // según cómo lo devuelva tu backend
+      return token.access_token || token;
     } catch (error) {
       console.error("Error fetching access token:", error);
       throw error;
+    }
+  }
+
+  // FUNCIÓN PARA CONSULTAR PDFs Y OBTENER knowledgeId (se usará dinámicamente con la pregunta del usuario)
+  async function fetchKnowledgeId(question: string) {
+    try {
+      const res = await apiPost("/query", { question });
+      console.log("Query result:", res);
+      if (res.ids && res.ids[0] && res.ids[0][0]) {
+        return res.ids[0][0];
+      }
+      return undefined;
+    } catch (error) {
+      console.error("Error fetching knowledgeId:", error);
+      return undefined;
     }
   }
 
@@ -97,7 +112,18 @@ function InteractiveAvatar() {
       );
       // --- FIN LISTENERS ---
 
-      await startAvatar(config);
+      // 🔎 Arrancamos sin knowledgeId fijo
+      const finalConfig: StartAvatarRequest = {
+        ...config,
+        knowledgeId: undefined,
+      };
+
+      await startAvatar(finalConfig, newToken);
+
+      // 👋 Mensaje inicial de bienvenida
+      avatar.sendMessage(
+        "¡Qué lindo es estar hoy con todos ustedes! ¿Qué les gustaría saber de Espacio Sommelier?"
+      );
 
       if (isVoiceChat) {
         await startVoiceChat();
