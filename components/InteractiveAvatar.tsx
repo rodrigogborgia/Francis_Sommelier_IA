@@ -3,24 +3,26 @@ import { useMemoizedFn, useUnmount } from "ahooks";
 
 import { Button } from "./Button";
 import { AvatarVideo } from "./AvatarSession/AvatarVideo";
-import { useStreamingAvatarSession } from "./logic/useStreamingAvatarSession";
 import { AvatarControls } from "./AvatarSession/AvatarControls";
+import { useStreamingAvatarSession } from "./logic/useStreamingAvatarSession";
 import { useVoiceChat } from "./logic/useVoiceChat";
+import { useTextChat } from "./logic/useTextChat"; // 👈 nuevo hook corregido
 import { StreamingAvatarProvider, StreamingAvatarSessionState } from "./logic";
 import { LoadingIcon } from "./Icons";
 import { MessageHistory } from "./AvatarSession/MessageHistory";
 
-import { apiPost } from "@/app/services/api"; // 👈 usamos el servicio centralizado
+import { apiPost } from "@/app/services/api";
 
 function InteractiveAvatar() {
   const { initAvatar, stopAvatar, sendText, sessionState, stream, sessionId } =
     useStreamingAvatarSession();
   const { startVoiceChat } = useVoiceChat();
+  const { sendMessage } = useTextChat(); // 👈 usamos el hook de texto
 
   const mediaStream = useRef<HTMLVideoElement>(null);
   const tokenRef = useRef<string | null>(null);
 
-  // FUNCIÓN PARA OBTENER EL TOKEN DESDE TU BACKEND
+  // Obtener token desde backend
   async function fetchAccessToken() {
     try {
       const token = await apiPost("/get-access-token", {});
@@ -32,7 +34,7 @@ function InteractiveAvatar() {
     }
   }
 
-  // FUNCIÓN PARA CONSULTAR PDFs Y OBTENER knowledgeId
+  // Consultar PDFs y obtener knowledgeId
   async function fetchKnowledgeId(question: string) {
     try {
       const res = await apiPost("/query", { question });
@@ -55,14 +57,12 @@ function InteractiveAvatar() {
 
       initAvatar(newToken);
 
-      // 👋 Enviar saludo inicial al avatar cuando tengamos sessionId
       const checkSession = setInterval(async () => {
         if (sessionId && tokenRef.current) {
           clearInterval(checkSession);
-          await sendText(
-            tokenRef.current,
-            "¡Qué lindo es estar hoy con todos ustedes! ¿Qué les gustaría saber de Espacio Sommelier?"
-          );
+
+          // 👋 Enviar saludo inicial
+          sendMessage("¡Qué lindo es estar hoy con todos ustedes! ¿Qué les gustaría saber de Espacio Sommelier?");
 
           if (isVoiceChat) {
             await startVoiceChat(tokenRef.current, sessionId);
@@ -81,16 +81,13 @@ function InteractiveAvatar() {
       return;
     }
 
-    // 1. Obtener knowledgeId desde backend
     const knowledgeId = await fetchKnowledgeId(userMessage);
-
-    // 2. Construir mensaje con knowledgeId
     const message = knowledgeId
       ? `${userMessage} [knowledgeId:${knowledgeId}]`
       : userMessage;
 
-    // 3. Enviar al avatar
-    await sendText(tokenRef.current, message);
+    // 👈 enviar mensaje al avatar vía WebSocket
+    sendMessage(message);
   });
 
   useUnmount(() => {

@@ -1,60 +1,85 @@
-import { TaskMode, TaskType } from "@heygen/streaming-avatar";
 import { useCallback } from "react";
-
 import { useStreamingAvatarContext } from "./context";
 
 export const useTextChat = () => {
-  const { avatarRef } = useStreamingAvatarContext();
+  const { avatarRef, sessionId } = useStreamingAvatarContext();
 
   const sendMessage = useCallback(
     (message: string) => {
-      if (!avatarRef.current) return;
-      avatarRef.current.speak({
-        text: message,
-        taskType: TaskType.TALK,
-        taskMode: TaskMode.ASYNC,
-      });
+      if (!avatarRef.current || !sessionId) return;
+      try {
+        avatarRef.current.send(
+          JSON.stringify({
+            type: "input_text",
+            text: message,
+            session_id: sessionId,
+            mode: "ASYNC", // antes TaskMode.ASYNC
+          })
+        );
+      } catch (err) {
+        console.error("Error enviando mensaje async:", err);
+      }
     },
-    [avatarRef],
+    [avatarRef, sessionId]
   );
 
   const sendMessageSync = useCallback(
     async (message: string) => {
-      if (!avatarRef.current) return;
-
-      return await avatarRef.current?.speak({
-        text: message,
-        taskType: TaskType.TALK,
-        taskMode: TaskMode.SYNC,
-      });
+      if (!avatarRef.current || !sessionId) return;
+      try {
+        avatarRef.current.send(
+          JSON.stringify({
+            type: "input_text",
+            text: message,
+            session_id: sessionId,
+            mode: "SYNC", // antes TaskMode.SYNC
+          })
+        );
+      } catch (err) {
+        console.error("Error enviando mensaje sync:", err);
+      }
     },
-    [avatarRef],
+    [avatarRef, sessionId]
   );
 
   const repeatMessage = useCallback(
     (message: string) => {
-      if (!avatarRef.current) return;
-
-      return avatarRef.current?.speak({
-        text: message,
-        taskType: TaskType.REPEAT,
-        taskMode: TaskMode.ASYNC,
-      });
+      if (!avatarRef.current || !sessionId) return;
+      try {
+        avatarRef.current.send(
+          JSON.stringify({
+            type: "input_text",
+            text: message,
+            session_id: sessionId,
+            mode: "ASYNC",
+            repeat: true, // antes TaskType.REPEAT
+          })
+        );
+      } catch (err) {
+        console.error("Error enviando repeat async:", err);
+      }
     },
-    [avatarRef],
+    [avatarRef, sessionId]
   );
 
   const repeatMessageSync = useCallback(
     async (message: string) => {
-      if (!avatarRef.current) return;
-
-      return await avatarRef.current?.speak({
-        text: message,
-        taskType: TaskType.REPEAT,
-        taskMode: TaskMode.SYNC,
-      });
+      if (!avatarRef.current || !sessionId) return;
+      try {
+        avatarRef.current.send(
+          JSON.stringify({
+            type: "input_text",
+            text: message,
+            session_id: sessionId,
+            mode: "SYNC",
+            repeat: true,
+          })
+        );
+      } catch (err) {
+        console.error("Error enviando repeat sync:", err);
+      }
     },
-    [avatarRef],
+    [avatarRef, sessionId]
   );
 
   return {
