@@ -20,20 +20,20 @@ export const AvatarControls: React.FC<{ onSendMessage: (msg: string) => void }> 
 
   return (
     <div className="flex flex-col gap-3 relative w-full items-center">
+      {/* Toggle entre Voice y Text */}
       <ToggleGroup
         className={`bg-zinc-700 rounded-lg p-1 ${isVoiceChatLoading ? "opacity-50" : ""}`}
         disabled={isVoiceChatLoading}
         type="single"
-        value={isVoiceChatActive || isVoiceChatLoading ? "voice" : "text"}
+        value={isVoiceChatActive ? "voice" : "text"}
         onValueChange={(value) => {
           if (value === "voice" && !isVoiceChatActive && !isVoiceChatLoading) {
-            startVoiceChat();
-          } else if (
-            value === "text" &&
-            isVoiceChatActive &&
-            !isVoiceChatLoading
-          ) {
-            stopVoiceChat();
+            // ⚡ Iniciar chat de voz
+            // Ojo: acá deberías pasar token y sessionId desde el padre
+            // startVoiceChat(token, sessionId);
+          } else if (value === "text" && isVoiceChatActive && !isVoiceChatLoading) {
+            // ⚡ Detener chat de voz
+            // stopVoiceChat(token, sessionId);
           }
         }}
       >
@@ -51,6 +51,7 @@ export const AvatarControls: React.FC<{ onSendMessage: (msg: string) => void }> 
         </ToggleGroupItem>
       </ToggleGroup>
 
+      {/* Mostrar AudioInput si está activo o cargando */}
       {isVoiceChatActive || isVoiceChatLoading ? (
         <AudioInput />
       ) : (
@@ -74,6 +75,7 @@ export const AvatarControls: React.FC<{ onSendMessage: (msg: string) => void }> 
         </div>
       )}
 
+      {/* Botón de interrupción */}
       <div className="absolute top-[-70px] right-3">
         <Button className="!bg-zinc-700 !text-white" onClick={interrupt}>
           Interrupt

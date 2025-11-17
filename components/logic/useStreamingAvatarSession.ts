@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef } from "react";
 import {
   StreamingAvatarSessionState,
   useStreamingAvatarContext,
@@ -9,7 +9,6 @@ import { useMessageHistory } from "./useMessageHistory";
 export const useStreamingAvatarSession = () => {
   const {
     avatarRef,
-    basePath,
     sessionState,
     setSessionState,
     stream,
@@ -17,21 +16,20 @@ export const useStreamingAvatarSession = () => {
     setIsListening,
     setIsUserTalking,
     setIsAvatarTalking,
-    setConnectionQuality,
-    handleUserTalkingMessage,
-    handleStreamingTalkingMessage,
-    handleEndMessage,
     clearMessages,
   } = useStreamingAvatarContext();
-  const { stopVoiceChat } = useVoiceChat();
 
+  const { stopVoiceChat } = useVoiceChat();
   useMessageHistory();
 
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const tokenRef = useRef<string | null>(null);
 
   // Inicializa WebSocket con el token
   const init = useCallback(
     (token: string) => {
+      tokenRef.current = token;
+
       const ws = new WebSocket(
         `wss://api.heygen.com/v1/streaming.ws?token=${token}`
       );
@@ -68,9 +66,14 @@ export const useStreamingAvatarSession = () => {
     [avatarRef, setSessionState, setStream]
   );
 
+  // Detener sesión y voz
   const stop = useCallback(async () => {
     clearMessages();
-    stopVoiceChat();
+
+    if (tokenRef.current && sessionId) {
+      await stopVoiceChat(tokenRef.current, sessionId);
+    }
+
     setIsListening(false);
     setIsUserTalking(false);
     setIsAvatarTalking(false);
@@ -82,6 +85,7 @@ export const useStreamingAvatarSession = () => {
 
     setSessionState(StreamingAvatarSessionState.INACTIVE);
     setSessionId(null);
+    tokenRef.current = null;
   }, [
     avatarRef,
     clearMessages,
@@ -91,6 +95,7 @@ export const useStreamingAvatarSession = () => {
     setIsAvatarTalking,
     setStream,
     setSessionState,
+    sessionId,
   ]);
 
   // Enviar texto al avatar vía REST API
