@@ -121,7 +121,7 @@ function InteractiveAvatar() {
       await startAvatar(finalConfig, newToken);
 
       // 👋 Mensaje inicial de bienvenida
-      avatar.sendMessage(
+      avatar.inputText(
         "¡Qué lindo es estar hoy con todos ustedes! ¿Qué les gustaría saber de Espacio Sommelier?"
       );
 
