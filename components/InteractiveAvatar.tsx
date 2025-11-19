@@ -21,22 +21,23 @@ function InteractiveAvatar() {
   const mediaStream = useRef<HTMLVideoElement>(null);
   const tokenRef = useRef<string | null>(null);
 
-  // ✅ Corrección: siempre devolver el string del access_token
+  // ✅ Corrección: endpoint correcto y extracción del token
   async function fetchAccessToken() {
     try {
-      const res = await apiPost("/get-access-token", {});
-      return res.access_token; // aseguramos que sea string
+      const res = await apiPost("/api/get-access-token", {});
+      return res.data?.token; // backend devuelve { data: { token: "..." } }
     } catch (error) {
       console.error("Error fetching access token:", error);
       throw error;
     }
   }
 
+  // ✅ Corrección: endpoint correcto y acceso a res.data.ids
   async function fetchKnowledgeId(question: string) {
     try {
-      const res = await apiPost("/query", { question });
-      if (res.ids && res.ids[0] && res.ids[0][0]) {
-        return res.ids[0][0];
+      const res = await apiPost("/api/query", { question });
+      if (res.data?.ids && res.data.ids[0] && res.data.ids[0][0]) {
+        return res.data.ids[0][0];
       }
       return undefined;
     } catch (error) {
