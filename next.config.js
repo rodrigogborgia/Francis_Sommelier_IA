@@ -11,14 +11,4 @@ const nextConfig = {
   // images: { domains: ['cdn.heygen.com'] },
 };
 
-const { withSentryConfig } = require("@sentry/nextjs");
-
-module.exports = withSentryConfig(nextConfig, {
-  org: "gamifica",
-  project: "javascript-nextjs",
-  silent: !process.env.CI,
-  widenClientFileUpload: true,
-  tunnelRoute: "/monitoring",
-  disableLogger: true,
-  automaticVercelMonitors: true,
-});
+module.exports = nextConfig;
