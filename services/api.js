@@ -1,7 +1,7 @@
 const API_BASE_URL = process.env.API_BASE_URL;
 
 export async function apiGet(endpoint) {
-  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const res = await fetch(`${API_BASE_URL}/${endpoint}`, {  // 👈 fijate la barra
     method: "GET",
     headers: { "Content-Type": "application/json" },
   });
@@ -12,7 +12,7 @@ export async function apiGet(endpoint) {
 }
 
 export async function apiPost(endpoint, body) {
-  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const res = await fetch(`${API_BASE_URL}/${endpoint}`, {  // 👈 fijate la barra
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
