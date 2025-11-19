@@ -21,10 +21,12 @@ function InteractiveAvatar() {
   const mediaStream = useRef<HTMLVideoElement>(null);
   const tokenRef = useRef<string | null>(null);
 
-  // ✅ Corrección: endpoint correcto y extracción del token
+  // ✅ Corrección + logs: endpoint correcto y extracción del token
   async function fetchAccessToken() {
     try {
       const res = await apiPost("/api/get-access-token", {});
+      console.log("Respuesta completa del backend (get-access-token):", res);
+      console.log("Token extraído:", res?.data?.token);
       return res.data?.token; // backend devuelve { data: { token: "..." } }
     } catch (error) {
       console.error("Error fetching access token:", error);
@@ -32,11 +34,13 @@ function InteractiveAvatar() {
     }
   }
 
-  // ✅ Corrección: endpoint correcto y acceso a res.data.ids
+  // ✅ Corrección + logs: endpoint correcto y acceso a res.data.ids
   async function fetchKnowledgeId(question: string) {
     try {
       const res = await apiPost("/api/query", { question });
+      console.log("Respuesta completa del backend (query):", res);
       if (res.data?.ids && res.data.ids[0] && res.data.ids[0][0]) {
+        console.log("KnowledgeId extraído:", res.data.ids[0][0]);
         return res.data.ids[0][0];
       }
       return undefined;
@@ -49,11 +53,15 @@ function InteractiveAvatar() {
   const startSessionV2 = useMemoizedFn(async (isVoiceChat: boolean) => {
     try {
       const newToken = await fetchAccessToken();
-      tokenRef.current = newToken; // ahora seguro es un string
+      console.log("Token recibido en startSessionV2:", newToken);
+      tokenRef.current = newToken;
 
       initAvatar(newToken);
 
       const checkSession = setInterval(async () => {
+        console.log("sessionId actual en checkSession:", sessionId);
+        console.log("tokenRef.current en checkSession:", tokenRef.current);
+
         if (sessionId && tokenRef.current) {
           clearInterval(checkSession);
 
@@ -82,6 +90,7 @@ function InteractiveAvatar() {
       ? `${userMessage} [knowledgeId:${knowledgeId}]`
       : userMessage;
 
+    console.log("Mensaje enviado al avatar:", message);
     sendMessage(message);
   });
 
