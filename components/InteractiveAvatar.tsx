@@ -24,7 +24,7 @@ function InteractiveAvatar() {
   // ✅ Corrección: quitar el prefijo /api para evitar doble /api/api
   async function fetchAccessToken() {
     try {
-      const res = await apiPost("start-session", {}); // ✅ sin /api
+      const res = await apiPost("start-session", {});
       console.log("Respuesta completa del backend (start-session):", res);
       return res.data?.token; // ahora viene junto con session_i
     } catch (error) {
